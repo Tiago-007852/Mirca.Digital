@@ -1,0 +1,372 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // -------------------------------------------------------------------------
+    // 0. GLOBAL SAFETY NET
+    // -------------------------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // -------------------------------------------------------------------------
+    // GLOBAL HELPERS
+    // -------------------------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUserVerified() {
+      return isSignedIn() && (
+        (request.auth.token != null && 'email_verified' in request.auth.token && request.auth.token.email_verified == true) || 
+        (request.auth.token != null && 'email' in request.auth.token && (
+          request.auth.token.email == "tiagopw07@gmail.com" ||
+          request.auth.token.email == "miguellanttonio007@gmail.com" ||
+          request.auth.token.email == "mirca_prestacaodeservico@outlook.com"
+        )) ||
+        request.auth.uid == "KWKVAqyWICZ4lp1yfNvx91wfFas1" ||
+        request.auth.uid == "V1DEMPPpPmYmzeEn0TmvsqpadLK2" ||
+        request.auth.uid == "LkvLGI9NgSdsdpL7dwA5Gvb5jkt1"
+      );
+    }
+
+    function isBootstrappedAdmin() {
+      return isSignedIn() && (
+        (request.auth.token != null && 'email' in request.auth.token && (
+          request.auth.token.email == "tiagopw07@gmail.com" ||
+          request.auth.token.email == "miguellanttonio007@gmail.com" ||
+          request.auth.token.email == "mirca_prestacaodeservico@outlook.com"
+        )) ||
+        request.auth.uid == "KWKVAqyWICZ4lp1yfNvx91wfFas1" ||
+        request.auth.uid == "V1DEMPPpPmYmzeEn0TmvsqpadLK2" ||
+        request.auth.uid == "LkvLGI9NgSdsdpL7dwA5Gvb5jkt1"
+      );
+    }
+
+    function getUserData(uid) {
+      return get(/databases/$(database)/documents/users/$(uid)).data;
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        getUserData(request.auth.uid).role == 'admin'
+      );
+    }
+
+    function isEmployee() {
+      return isBootstrappedAdmin() || (
+        isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+        (getUserData(request.auth.uid).role == 'employee' || getUserData(request.auth.uid).role == 'admin')
+      );
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // -------------------------------------------------------------------------
+    // 1. PRODUCTS COLLECTION
+    // -------------------------------------------------------------------------
+    match /products/{productId} {
+      allow read: if true;
+      allow create, update: if isEmployee() && isValidId(productId) && isValidProduct(incoming());
+      allow delete: if isEmployee() && isValidId(productId);
+
+      function isValidProduct(p) {
+        return p.id is string && p.id.size() <= 64 &&
+               p.name is string && p.name.size() > 0 &&
+               p.category is string &&
+               p.description is string;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. PROJECTS COLLECTION
+    // -------------------------------------------------------------------------
+    match /projects/{projectId} {
+      allow read: if true;
+      allow create, update: if isEmployee() && isValidId(projectId) && isValidProject(incoming());
+      allow delete: if isEmployee() && isValidId(projectId);
+
+      function isValidProject(p) {
+        return p.id is string && p.id.size() <= 64 &&
+               p.title is string && p.title.size() > 0 &&
+               p.category is string &&
+               p.description is string;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. GALLERY COLLECTION
+    // -------------------------------------------------------------------------
+    match /gallery/{galleryId} {
+      allow read: if true;
+      allow create, update: if isEmployee() && isValidId(galleryId) && isValidGalleryItem(incoming());
+      allow delete: if isEmployee() && isValidId(galleryId);
+
+      function isValidGalleryItem(g) {
+        return g.id is string && g.id.size() <= 64 &&
+               g.title is string &&
+               g.category is string;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. CATEGORIES COLLECTION
+    // -------------------------------------------------------------------------
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow create, update: if isEmployee() && isValidId(categoryId) && isValidCategory(incoming());
+      allow delete: if isEmployee() && isValidId(categoryId);
+
+      function isValidCategory(c) {
+        return c.id is string && c.id.size() <= 64 &&
+               c.name is string && c.name.size() <= 64 &&
+               c.slug is string && c.slug.size() <= 64 &&
+               (c.displayOrder is int || c.displayOrder is number);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 4b. SUBCATEGORIES COLLECTION
+    // -------------------------------------------------------------------------
+    match /subcategories/{subcategoryId} {
+      allow read: if true;
+      allow create, update: if isEmployee() && isValidId(subcategoryId) && isValidSubcategory(incoming());
+      allow delete: if isEmployee() && isValidId(subcategoryId);
+
+      function isValidSubcategory(sc) {
+        return sc.id is string && sc.id.size() <= 64 &&
+               sc.categoryId is string && sc.categoryId.size() <= 64 &&
+               sc.name is string && sc.name.size() <= 64 &&
+               sc.slug is string && sc.slug.size() <= 64 &&
+               sc.icon is string && sc.icon.size() <= 512 &&
+               (sc.displayOrder is int || sc.displayOrder is number);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. SERVICES COLLECTION
+    // -------------------------------------------------------------------------
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidId(serviceId) && isValidService(incoming());
+      allow delete: if isAdmin() && isValidId(serviceId);
+
+      function isValidService(s) {
+        return s.id is string && s.id.size() <= 64 &&
+               s.title is string && s.title.size() <= 128 &&
+               s.description is string && s.description.size() <= 1024 &&
+               (s.displayOrder is int || s.displayOrder is number);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 6. WEBSITE CONTENT CMS
+    // -------------------------------------------------------------------------
+    match /websiteContent/{contentId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidId(contentId) && isValidWebsiteContent(incoming());
+      allow delete: if isAdmin() && isValidId(contentId);
+
+      function isValidWebsiteContent(w) {
+        return w.id is string && w.id.size() <= 64 &&
+               w.history is string && w.history.size() <= 8192 &&
+               w.mission is string && w.mission.size() <= 1024 &&
+               w.phone is string && w.phone.size() <= 32 &&
+               w.email is string && w.email.size() <= 128;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. TESTIMONIALS
+    // -------------------------------------------------------------------------
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidId(testimonialId) && isValidTestimonial(incoming());
+      allow delete: if isAdmin() && isValidId(testimonialId);
+
+      function isValidTestimonial(t) {
+        return t.id is string && t.id.size() <= 64 &&
+               t.clientName is string && t.clientName.size() <= 128 &&
+               t.comment is string && t.comment.size() <= 2048 &&
+               t.rating is number;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. PARTNERS
+    // -------------------------------------------------------------------------
+    match /partners/{partnerId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidId(partnerId) && isValidPartner(incoming());
+      allow delete: if isAdmin() && isValidId(partnerId);
+
+      function isValidPartner(p) {
+        return p.id is string && p.id.size() <= 64 &&
+               p.name is string && p.name.size() <= 128 &&
+               p.logo is string && p.logo.size() <= 512;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. BANNERS
+    // -------------------------------------------------------------------------
+    match /banners/{bannerId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidId(bannerId) && isValidBanner(incoming());
+      allow delete: if isAdmin() && isValidId(bannerId);
+
+      function isValidBanner(b) {
+        return b.id is string && b.id.size() <= 64 &&
+               b.headline is string && b.headline.size() <= 256 &&
+               b.subtitle is string && b.subtitle.size() <= 512 &&
+               (b.priority is int || b.priority is number);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 10. SYSTEM SETTINGS
+    // -------------------------------------------------------------------------
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow create, update: if isAdmin() && isValidId(settingsId) && isValidSettings(incoming());
+      allow delete: if isAdmin() && isValidId(settingsId);
+
+      function isValidSettings(s) {
+        return s.id is string && s.id.size() <= 64 &&
+               s.siteName is string && s.siteName.size() <= 128 &&
+               s.businessEmail is string && s.businessEmail.size() <= 128;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 11. USER PROFILES (PREVENT ROLE ESCALATION SURGICALLY)
+    // -------------------------------------------------------------------------
+    match /users/{userId} {
+      // Employees/Admins can list profiles, users can get their own
+      allow get: if isSignedIn() && (request.auth.uid == userId || isEmployee() || (request.auth.token != null && 'email' in request.auth.token && resource.data.email == request.auth.token.email));
+      allow list: if isEmployee() || (isSignedIn() && request.auth.token != null && 'email' in request.auth.token && resource.data.email == request.auth.token.email);
+      
+      // Creating a profile or deleting
+      allow create: if (isSignedIn() && request.auth.uid == userId && isValidNewUser(incoming(), userId)) || (isAdmin() && isValidNewUser(incoming(), userId));
+      allow delete: if isAdmin() && isValidId(userId);
+      
+      // Safe update partition
+      allow update: if (
+        isSignedIn() && (
+          // Admin can manage anyone
+          isAdmin() || 
+          // An employee can update their own non-role metadata
+          (request.auth.uid == userId && 
+           incoming().role == existing().role && 
+           incoming().diff(existing()).affectedKeys().hasOnly(['name', 'phone', 'photo', 'lastLogin', 'updatedAt']))
+        )
+      );
+
+      function isValidNewUser(u, uid) {
+        return u.uid == uid &&
+               u.email is string && u.email.size() <= 128 &&
+               u.name is string && u.name.size() <= 128 &&
+               // Enforce default non-escalated role during creation is NOT self-assigned unless they are the bootstrapped email
+               (!('role' in u) || u.role == 'employee' || isBootstrappedAdmin()) &&
+               (!('status' in u) || u.status == 'active' || u.status == 'inactive');
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 12. QUOTATIONS (CLIENTS CAN CREATE, ADMINISTRATORS CAN TRIAGE)
+    // -------------------------------------------------------------------------
+    match /quotations/{quotationId} {
+      allow get: if isEmployee() || (isSignedIn() && request.auth.token != null && 'email' in request.auth.token && existing().email == request.auth.token.email);
+      allow list: if isEmployee();
+      allow create: if isValidId(quotationId) && isValidQuotation(incoming());
+      
+      allow delete: if isAdmin();
+      
+      // Updates divided into operator tiers
+      allow update: if (
+        isEmployee() && (
+          // Triaging/Changing status only
+          incoming().diff(existing()).affectedKeys().hasOnly(['status', 'notes', 'assignedEmployee', 'priority']) ||
+          // Admin full correction
+          isAdmin()
+        )
+      );
+
+      function isValidQuotation(q) {
+        return q.id is string && q.id.size() <= 64 &&
+               q.name is string && q.name.size() > 0 && q.name.size() <= 128 &&
+               q.email is string && q.email.size() > 0 && q.email.size() <= 128 &&
+               q.phone is string && q.phone.size() > 0 && q.phone.size() <= 32 &&
+               q.status is string && (q.status == 'pending' || q.status == 'approved' || q.status == 'rejected' || q.status == 'completed');
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 13. SHOPPING REQUESTS (CART REQUESTS)
+    // -------------------------------------------------------------------------
+    match /shoppingRequests/{requestId} {
+      allow get: if isEmployee() || (isSignedIn() && request.auth.token != null && 'email' in request.auth.token && existing().email == request.auth.token.email);
+      allow list: if isEmployee();
+      allow create: if isValidId(requestId) && isValidShoppingRequest(incoming());
+      
+      allow delete: if isAdmin();
+      
+      allow update: if (
+        isEmployee() && (
+          incoming().diff(existing()).affectedKeys().hasOnly(['status']) ||
+          isAdmin()
+        )
+      );
+
+      function isValidShoppingRequest(sr) {
+        return sr.id is string && sr.id.size() <= 64 &&
+               sr.customerName is string && sr.customerName.size() > 0 && sr.customerName.size() <= 128 &&
+               sr.phone is string && sr.phone.size() > 0 && sr.phone.size() <= 32 &&
+               sr.status is string && (sr.status == 'pending' || sr.status == 'contacted' || sr.status == 'completed' || sr.status == 'cancelled');
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 14. ACTIVITY LOGS (AUDITING IS IMMUTABLE STREAM ONLY CREATED BY AUTH USERS)
+    // -------------------------------------------------------------------------
+    match /activityLogs/{logId} {
+      allow read: if isEmployee();
+      allow create: if isSignedIn() && isValidId(logId) && isValidLog(incoming());
+      allow update, delete: if false; // Total IMMUTABILITY for security audit logs
+
+      function isValidLog(l) {
+        return l.id is string && l.id.size() <= 64 &&
+               l.action is string && (l.action == 'login' || l.action == 'logout' || l.action == 'create' || l.action == 'edit' || l.action == 'delete' || l.action == 'archive' || l.action == 'restore') &&
+               l.user is string && l.user.size() <= 128 &&
+               l.role is string && l.role.size() <= 64 &&
+               l.details is string && l.details.size() <= 4096;
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // 15. FALLBACK / AUTO-ALLOW NEW COLLECTIONS (No conflict)
+    // -------------------------------------------------------------------------
+    match /{collectionName}/{document=**} {
+      allow read, write: if ! (collectionName in [
+        'users', 'activityLogs', 'quotations', 'shoppingRequests',
+        'products', 'categories', 'subcategories', 'services', 'websiteContent',
+        'testimonials', 'partners', 'banners', 'settings',
+        'projects', 'gallery'
+      ]);
+    }
+
+  }
+}

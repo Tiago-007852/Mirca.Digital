@@ -1,0 +1,10 @@
+# https://www.robotstxt.org/robotstxt.html
+User-agent: *
+Allow: /
+
+# Exclude sensitive admin routes from search indexation
+Disallow: /admin
+Disallow: /admin/login
+Disallow: /api/
+
+Sitemap: https://mirca-control.co.ao/sitemap.xml

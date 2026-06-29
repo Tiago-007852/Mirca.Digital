@@ -1,0 +1,6 @@
+{
+  "name": "MIRCA Digital",
+  "description": "Complete Enterprise Website for MIRCA - Comércio e Prestação de Serviços, LDA. Specializing in Electronic Security, Custom Furniture, Construction, and Civil Finishing in Angola.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

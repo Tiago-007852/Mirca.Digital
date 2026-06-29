@@ -1,0 +1,19 @@
+{
+  "firestore": {
+    "database": "ai-studio-64fe233a-3bd7-4f10-b7d3-3b3312214cb1",
+    "location": "europe-west2",
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
+  },
+  "storage": {
+    "rules": "storage.rules"
+  }
+}

@@ -1,0 +1,132 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "Information about catalog products, covering either custom furniture or electronic security items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique product identifier" },
+        "name": { "type": "string", "description": "Title display name" },
+        "category": { "type": "string", "enum": ["security", "furniture", "construction", "finishing", "cozinha", "transporte", "mobiliario"] },
+        "categoryId": { "type": "string" },
+        "subcategoryId": { "type": "string" },
+        "description": { "type": "string" },
+        "technicalSpecs": { "type": "array" },
+        "image": { "type": "string" },
+        "inStock": { "type": "boolean" },
+        "price": { "type": "number" },
+        "priceVisible": { "type": "boolean" }
+      },
+      "required": ["id", "name", "category", "description", "image", "inStock"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "A Showcase item detailing a completed professional engagement",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "location": { "type": "string" },
+        "description": { "type": "string" },
+        "afterImage": { "type": "string" },
+        "servicesUsed": { "type": "array" }
+      },
+      "required": ["id", "title", "category", "location", "description", "afterImage"]
+    },
+    "QuotationRequest": {
+      "title": "QuotationRequest",
+      "description": "CRM client quotation simulation card",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected", "completed"] }
+      },
+      "required": ["id", "name", "email", "phone", "status"]
+    },
+    "ShoppingRequest": {
+      "title": "ShoppingRequest",
+      "description": "Client Cart items intent transmission request",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "contacted", "completed", "cancelled"] }
+      },
+      "required": ["id", "customerName", "phone", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User Account identity metadata and RBAC privileges",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string", "enum": ["admin", "employee"] }
+      },
+      "required": ["uid", "email", "name", "role"]
+    },
+    "ActivityLog": {
+      "title": "ActivityLog",
+      "description": "Unmodifiable system operator log audit event record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "action": { "type": "string", "enum": ["login", "logout", "create", "edit", "delete", "archive", "restore"] },
+        "user": { "type": "string" },
+        "role": { "type": "string" },
+        "details": { "type": "string" }
+      },
+      "required": ["id", "action", "user", "role", "details"]
+    },
+    "SubcategoryItem": {
+      "title": "SubcategoryItem",
+      "description": "Subcategory mapping within a category",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "categoryId": { "type": "string" },
+        "name": { "type": "string" },
+        "slug": { "type": "string" },
+        "icon": { "type": "string" },
+        "displayOrder": { "type": "number" }
+      },
+      "required": ["id", "categoryId", "name", "slug", "icon", "displayOrder"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Collection of catalog items"
+    },
+    "/subcategories/{subcategoryId}": {
+      "schema": { "$ref": "#/entities/SubcategoryItem" },
+      "description": "Subcategories under main categories"
+    },
+    "/projects/{projectId}": {
+      "schema": { "$ref": "#/entities/Project" },
+      "description": "Completed work samples"
+    },
+    "/quotations/{quotationId}": {
+      "schema": { "$ref": "#/entities/QuotationRequest" },
+      "description": "Leads and quotation requests"
+    },
+    "/shoppingRequests/{requestId}": {
+      "schema": { "$ref": "#/entities/ShoppingRequest" },
+      "description": "Product shopping list leads"
+    },
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Operator permissions maps"
+    },
+    "/activityLogs/{logId}": {
+      "schema": { "$ref": "#/entities/ActivityLog" },
+      "description": "Administrative auditable track trails"
+    }
+  }
+}
